@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Flagstack Ruby Release Script
+# Usage: bin/release [version]
+# Example: bin/release 0.2.0
+
+VERSION=${1:-}
+GEM_NAME="flagstack"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+info() { echo -e "${GREEN}==>${NC} $1"; }
+warn() { echo -e "${YELLOW}Warning:${NC} $1"; }
+error() { echo -e "${RED}Error:${NC} $1" >&2; exit 1; }
+
+# Get current version from lib/flagstack/version.rb
+current_version() {
+  sed -n 's/.*VERSION = "\([^"]*\)".*/\1/p' lib/flagstack/version.rb
+}
+
+# Validate semantic version format
+validate_version() {
+  if [[ ! $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+    error "Invalid version format: $1 (expected: x.y.z or x.y.z-pre)"
+  fi
+}
+
+# Check for uncommitted changes
+check_git_clean() {
+  if [[ -n $(git status --porcelain) ]]; then
+    error "Working directory not clean. Commit or stash changes first."
+  fi
+}
+
+# Check we're on main branch
+check_main_branch() {
+  local branch=$(git branch --show-current)
+  if [[ "$branch" != "main" ]]; then
+    warn "Not on main branch (currently on: $branch)"
+    read -p "Continue anyway? [y/N] " -n 1 -r
+    echo
+    [[ $REPLY =~ ^[Yy]$ ]] || exit 1
+  fi
+}
+
+# Update version in lib/flagstack/version.rb
+update_version() {
+  local new_version=$1
+  sed -i '' "s/VERSION = \".*\"/VERSION = \"$new_version\"/" lib/flagstack/version.rb
+  info "Updated version to $new_version"
+}
+
+# Build the gem
+build_gem() {
+  info "Building gem..."
+  gem build flagstack.gemspec
+  echo
+}
+
+# Run tests
+run_tests() {
+  info "Running tests..."
+  bundle exec rspec
+  echo
+}
+
+# Create git tag and commit
+git_tag() {
+  local version=$1
+  info "Creating git tag v$version..."
+
+  git add lib/flagstack/version.rb
+  git commit -m "Bump version to $version"
+  git tag -a "v$version" -m "Release v$version"
+}
+
+# Push to GitHub
+push_github() {
+  local version=$1
+  info "Pushing to GitHub..."
+  git push origin main
+  git push origin "v$version"
+}
+
+# Push to RubyGems
+push_rubygems() {
+  local version=$1
+  local gem_file="${GEM_NAME}-${version}.gem"
+
+  info "Pushing $gem_file to RubyGems..."
+  gem push "$gem_file"
+}
+
+# Cleanup gem files
+cleanup() {
+  info "Cleaning up..."
+  rm -f *.gem
+}
+
+# Main release flow
+main() {
+  local current=$(current_version)
+
+  echo "╔══════════════════════════════════════╗"
+  echo "║     Flagstack Ruby Release Script    ║"
+  echo "╚══════════════════════════════════════╝"
+  echo
+
+  # Determine version
+  if [[ -z "$VERSION" ]]; then
+    info "Current version: $current"
+    read -p "Enter new version: " VERSION
+  fi
+
+  validate_version "$VERSION"
+
+  if [[ "$VERSION" == "$current" ]]; then
+    info "Version unchanged ($current)"
+  else
+    info "Version: $current -> $VERSION"
+  fi
+
+  echo
+  echo "This will:"
+  echo "  1. Run tests"
+  echo "  2. Update version to $VERSION"
+  echo "  3. Build the gem"
+  echo "  4. Commit and tag v$VERSION"
+  echo "  5. Push to GitHub"
+  echo "  6. Push to RubyGems"
+  echo
+
+  read -p "Continue? [y/N] " -n 1 -r
+  echo
+  [[ $REPLY =~ ^[Yy]$ ]] || exit 0
+
+  echo
+
+  # Pre-flight checks
+  check_git_clean
+  check_main_branch
+
+  # Run tests first
+  run_tests
+
+  # Update version if changed
+  if [[ "$VERSION" != "$current" ]]; then
+    update_version "$VERSION"
+  fi
+
+  # Build
+  build_gem
+
+  # Git operations
+  if [[ "$VERSION" != "$current" ]]; then
+    git_tag "$VERSION"
+  else
+    # Just tag if version unchanged
+    git tag -a "v$VERSION" -m "Release v$VERSION" 2>/dev/null || warn "Tag v$VERSION already exists"
+  fi
+
+  # Push
+  push_github "$VERSION"
+  push_rubygems "$VERSION"
+
+  # Cleanup
+  cleanup
+
+  echo
+  info "Released v$VERSION successfully!"
+  echo
+  echo "  GitHub:   https://github.com/flagstack-dev/flagstack-ruby/releases/tag/v$VERSION"
+  echo "  RubyGems: https://rubygems.org/gems/flagstack/versions/$VERSION"
+}
+
+main
