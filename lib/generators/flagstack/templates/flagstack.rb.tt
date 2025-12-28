@@ -1,0 +1,31 @@
+# Flagstack syncs feature flags from your Flagstack account to a local Flipper adapter.
+# After configuration, use standard Flipper methods: Flipper.enabled?(:feature)
+
+Flagstack.configure do |config|
+  # Your API token from https://flagstack.io
+  # Tokens are environment-specific:
+  #   fs_live_xxx     -> Production
+  #   fs_test_xxx     -> Staging
+  #   fs_dev_xxx      -> Development
+  #   fs_personal_xxx -> Your personal environment
+  config.token = ENV["FLAGSTACK_TOKEN"]
+
+  # Flagstack server URL (default: https://flagstack.io)
+  # config.url = ENV.fetch("FLAGSTACK_URL", "https://flagstack.io")
+
+  # How often to sync flags in seconds (default: 10, minimum: 10)
+  # config.sync_interval = 10
+
+  # Sync method: :poll (background thread) or :manual
+  # config.sync_method = :poll
+
+  # HTTP timeouts in seconds
+  # config.read_timeout = 5
+  # config.open_timeout = 2
+
+  # Local adapter (auto-detected if flipper-active_record is present)
+  # config.local_adapter = Flipper::Adapters::ActiveRecord.new
+
+  # Logging
+  # config.logger = Rails.logger
+end
