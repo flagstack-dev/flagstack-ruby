@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-12-28
+
+### Changed
+
+- Default sync interval changed from 10 seconds to 30 seconds
+
 ## [0.1.0] - 2025-12-27
 
 ### Added
@@ -39,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `token` - API token (required)
 - `url` - Flagstack server URL (default: https://flagstack.io)
-- `sync_interval` - Polling interval in seconds (default: 10)
+- `sync_interval` - Polling interval in seconds (default: 30)
 - `sync_method` - `:poll` or `:manual` (default: :poll)
 - `telemetry_enabled` - Enable/disable telemetry (default: true)
 - `telemetry_interval` - Telemetry submission interval (default: 60)

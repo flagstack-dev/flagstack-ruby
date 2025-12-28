@@ -78,7 +78,7 @@ module Flagstack
     end
 
     def setup_sync(options)
-      interval = options.fetch(:sync_interval) { ENV.fetch("FLAGSTACK_SYNC_INTERVAL", 10).to_i }
+      interval = options.fetch(:sync_interval) { ENV.fetch("FLAGSTACK_SYNC_INTERVAL", 30).to_i }
       @sync_interval = [interval, 10].max  # Minimum 10 seconds
 
       @sync_method = options.fetch(:sync_method, :poll)
